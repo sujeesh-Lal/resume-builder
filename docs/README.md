@@ -5,6 +5,8 @@
 | Document | Description |
 |----------|-------------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Full platform overview — service map, data flows, Docker setup, tech stack, monorepo structure, webpack/pnpm bundling strategy |
+| [DOCKER.md](./DOCKER.md) | Docker deep dive — what each `docker:up` / `docker:up:all` / `docker:down` / `docker:logs` command does, how profiles work, how containers connect, how images are built, troubleshooting |
+| [DOCKER-CONCEPTS.md](./DOCKER-CONCEPTS.md) | Docker from first principles — what Docker is, images, containers, ports, volumes, networks, Compose, profiles, Dockerfiles, and how all of it applies to this project |
 
 ---
 
