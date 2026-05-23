@@ -1,0 +1,31 @@
+{
+  "name": "resume-platform",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "dev:web": "pnpm --filter web-app dev",
+    "dev:gateway": "pnpm --filter gateway dev",
+    "dev:resume": "pnpm --filter resume-service dev",
+    "dev:pdf": "pnpm --filter pdf-service dev",
+    "build": "pnpm --filter './libs/*' build && pnpm --filter './apps/*' build",
+    "lint": "pnpm --recursive lint",
+    "docker:up": "docker compose up -d",
+    "docker:up:all": "docker compose --profile apps up -d --build",
+    "docker:down": "docker compose --profile apps down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "ts-loader": "^9.5.1",
+    "webpack-node-externals": "^3.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0"
+  }
+}

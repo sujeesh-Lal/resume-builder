@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@resume-platform/shared-types": ["libs/shared-types/src/index.ts"],
+      "@resume-platform/events": ["libs/events/src/index.ts"],
+      "@resume-platform/logger": ["libs/logger/src/index.ts"],
+      "@resume-platform/common": ["libs/common/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,116 @@
+version: '3.9'
+
+services:
+  # ── Infrastructure (always started by docker:up) ─────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: resume-mongodb
+    restart: unless-stopped
+    ports:
+      - '27018:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: secret
+      MONGO_INITDB_DATABASE: resume_platform
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - resume-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: resume-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - resume-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: resume-rabbitmq
+    restart: unless-stopped
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: secret
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - resume-network
+
+  # ── App services (only started with --profile apps, i.e. docker:up:all) ──
+  gateway:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    container_name: resume-gateway
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - RESUME_SERVICE_URL=http://resume-service:3001
+      - PDF_SERVICE_URL=http://pdf-service:3002
+    depends_on:
+      - mongodb
+      - redis
+      - rabbitmq
+    networks:
+      - resume-network
+
+  resume-service:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/resume-service/Dockerfile
+    container_name: resume-service
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=mongodb://root:secret@mongodb:27017/resume_platform?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://admin:secret@rabbitmq:5672
+    depends_on:
+      - mongodb
+      - redis
+      - rabbitmq
+    networks:
+      - resume-network
+
+  pdf-service:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/pdf-service/Dockerfile
+    container_name: pdf-service
+    restart: unless-stopped
+    ports:
+      - '3002:3002'
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - RABBITMQ_URL=amqp://admin:secret@rabbitmq:5672
+      - RESUME_SERVICE_URL=http://resume-service:3001
+    depends_on:
+      - rabbitmq
+      - resume-service
+    networks:
+      - resume-network
+
+volumes:
+  mongo_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  resume-network:
+    driver: bridge
