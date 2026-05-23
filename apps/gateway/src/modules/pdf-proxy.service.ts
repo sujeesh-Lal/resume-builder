@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { ResumeData } from '@resume-platform/shared-types';
 
 @Injectable()
 export class PdfProxyService {
@@ -15,15 +16,15 @@ export class PdfProxyService {
       this.config.get<string>('PDF_SERVICE_URL') ?? 'http://localhost:3002';
   }
 
-  async requestPdf(resumeId: string, template: string, format = 'A4') {
+  async requestPdf(resume: ResumeData, format = 'A4'): Promise<Buffer> {
     const { data } = await firstValueFrom(
-      this.http.post(`${this.pdfServiceUrl}/pdf/generate`, {
-        resumeId,
-        template,
-        format,
-      }),
+      this.http.post(
+        `${this.pdfServiceUrl}/pdf/generate`,
+        { resume, format },
+        { responseType: 'arraybuffer' },
+      ),
     );
-    return data;
+    return Buffer.from(data);
   }
 
   async getPdfStatus(resumeId: string) {

@@ -12,7 +12,7 @@ export function PreviewStep() {
     setIsDownloading(true);
     setDownloadError(null);
     try {
-      const blob = await pdfApi.generate(resume.id, resume.template);
+      const blob = await pdfApi.generate(resume);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
