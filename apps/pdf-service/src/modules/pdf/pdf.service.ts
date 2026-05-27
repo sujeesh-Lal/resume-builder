@@ -364,7 +364,7 @@ export class PdfService {
     <div class="header">
       <div class="avatar">
         ${p.photo
-          ? `<img src="${p.photo}" alt="${p.fullName}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+          ? `<img src="${p.photo}" alt="${this.e(p.fullName)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;object-position:${p.photoPosition ? `${p.photoPosition.x}% ${p.photoPosition.y}%` : '50% 50%'};" />`
           : `<span>${initials}</span>`
         }
       </div>

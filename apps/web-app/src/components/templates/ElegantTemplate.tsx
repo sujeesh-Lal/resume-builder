@@ -114,7 +114,18 @@ export function ElegantTemplate({ resume }: Props) {
           border: '1px solid #d0d0d0',
         }}>
           {p.photo ? (
-            <img src={p.photo} alt={p.fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img
+              src={p.photo}
+              alt={p.fullName}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: p.photoPosition
+                  ? `${p.photoPosition.x}% ${p.photoPosition.y}%`
+                  : '50% 50%',
+              }}
+            />
           ) : (
             <span style={{
               fontFamily: SANS,

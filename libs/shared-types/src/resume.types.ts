@@ -8,6 +8,7 @@ export interface PersonalInfo {
   github?: string;
   professionalTitle?: string;
   photo?: string; // base64 data URL
+  photoPosition?: { x: number; y: number }; // percentage 0–100 for object-position
 }
 
 export interface WorkExperience {
