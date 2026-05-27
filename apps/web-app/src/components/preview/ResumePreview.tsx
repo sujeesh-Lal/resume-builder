@@ -3,6 +3,7 @@ import { ModernTemplate } from '../templates/ModernTemplate';
 import { ClassicTemplate } from '../templates/ClassicTemplate';
 import { MinimalTemplate } from '../templates/MinimalTemplate';
 import { CreativeTemplate } from '../templates/CreativeTemplate';
+import { ElegantTemplate } from '../templates/ElegantTemplate';
 
 interface Props {
   resume: ResumeData;
@@ -14,6 +15,7 @@ export function ResumePreview({ resume }: Props) {
     classic: <ClassicTemplate resume={resume} />,
     minimal: <MinimalTemplate resume={resume} />,
     creative: <CreativeTemplate resume={resume} />,
+    elegant: <ElegantTemplate resume={resume} />,
   };
 
   return (

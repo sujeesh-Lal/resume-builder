@@ -16,7 +16,7 @@ export interface WorkExperience {
   endDate?: string;
   current: boolean;
   location?: string;
-  description: string;
+  description: string[];
   highlights: string[];
 }
 
@@ -75,7 +75,7 @@ export interface CustomSectionItem {
   description?: string;
 }
 
-export type ResumeTemplate = 'modern' | 'classic' | 'minimal' | 'creative';
+export type ResumeTemplate = 'modern' | 'classic' | 'minimal' | 'creative' | 'elegant';
 
 export interface ResumeData {
   id: string;

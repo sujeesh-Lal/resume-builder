@@ -2,6 +2,12 @@ import type { ResumeData } from '@resume-platform/shared-types';
 
 interface Props { resume: ResumeData }
 
+function descItems(d: string | string[] | undefined): string[] {
+  if (!d) return [];
+  if (Array.isArray(d)) return d.filter(Boolean);
+  return d.trim() ? [d.trim()] : [];
+}
+
 export function ClassicTemplate({ resume }: Props) {
   const { personalInfo: p, summary, experience, education, skills, projects, certifications } = resume;
 
@@ -33,10 +39,11 @@ export function ClassicTemplate({ resume }: Props) {
                 <span style={{ fontSize: '10pt', color: '#555' }}>{exp.startDate} – {exp.current ? 'Present' : exp.endDate ?? ''}</span>
               </div>
               <div style={{ fontStyle: 'italic', color: '#555' }}>{exp.company}{exp.location ? `, ${exp.location}` : ''}</div>
-              {exp.description && <p style={{ margin: '4px 0 0', fontSize: '10pt' }}>{exp.description}</p>}
-              {exp.highlights?.length > 0 && (
+              {[...descItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean).length > 0 && (
                 <ul style={{ margin: '4px 0 0', paddingLeft: '18px' }}>
-                  {exp.highlights.map((h, i) => <li key={i} style={{ fontSize: '10pt' }}>{h}</li>)}
+                  {[...descItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean).map((h, i) => (
+                    <li key={i} style={{ fontSize: '10pt' }}>{h}</li>
+                  ))}
                 </ul>
               )}
             </div>

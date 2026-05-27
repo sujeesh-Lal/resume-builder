@@ -2,6 +2,12 @@ import type { ResumeData } from '@resume-platform/shared-types';
 
 interface Props { resume: ResumeData }
 
+function descItems(d: string | string[] | undefined): string[] {
+  if (!d) return [];
+  if (Array.isArray(d)) return d.filter(Boolean);
+  return d.trim() ? [d.trim()] : [];
+}
+
 export function CreativeTemplate({ resume }: Props) {
   const { personalInfo: p, summary, experience, education, skills, projects, certifications } = resume;
 
@@ -36,10 +42,11 @@ export function CreativeTemplate({ resume }: Props) {
                     <strong>{exp.position}</strong>
                     <div style={{ color: '#7c3aed', fontSize: '10pt' }}>{exp.company}{exp.location ? ` · ${exp.location}` : ''}</div>
                     <div style={{ fontSize: '10pt', color: '#888', marginBottom: '4px' }}>{exp.startDate} – {exp.current ? 'Present' : exp.endDate ?? ''}</div>
-                    {exp.description && <p style={{ margin: 0, fontSize: '10pt' }}>{exp.description}</p>}
-                    {exp.highlights?.length > 0 && (
+                    {[...descItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean).length > 0 && (
                       <ul style={{ margin: '4px 0 0', paddingLeft: '16px' }}>
-                        {exp.highlights.map((h, i) => <li key={i} style={{ fontSize: '10pt' }}>{h}</li>)}
+                        {[...descItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean).map((h, i) => (
+                          <li key={i} style={{ fontSize: '10pt' }}>{h}</li>
+                        ))}
                       </ul>
                     )}
                   </div>

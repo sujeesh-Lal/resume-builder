@@ -28,6 +28,12 @@ const TEMPLATES: { id: ResumeTemplate; name: string; description: string; color:
     description: 'Vibrant gradient header for creative roles',
     color: 'bg-gradient-to-r from-purple-600 to-pink-500',
   },
+  {
+    id: 'elegant',
+    name: 'Elegant',
+    description: 'Serif typography with circular photo and spaced headings',
+    color: 'bg-stone-200',
+  },
 ];
 
 export function TemplateStep() {
@@ -38,7 +44,7 @@ export function TemplateStep() {
       title="Choose a Template"
       description="Pick a style that fits your personality. You can change this anytime."
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {TEMPLATES.map((t) => (
           <button
             key={t.id}

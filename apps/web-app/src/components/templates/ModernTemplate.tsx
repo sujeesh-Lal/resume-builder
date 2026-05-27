@@ -2,6 +2,13 @@ import type { ResumeData } from '@resume-platform/shared-types';
 
 interface Props { resume: ResumeData }
 
+// Backward-compat: description may still be a plain string in old stored data
+function descItems(d: string | string[] | undefined): string[] {
+  if (!d) return [];
+  if (Array.isArray(d)) return d.filter(Boolean);
+  return d.trim() ? [d.trim()] : [];
+}
+
 export function ModernTemplate({ resume }: Props) {
   const { personalInfo: p, summary, experience, education, skills, projects, certifications } = resume;
 
@@ -34,7 +41,7 @@ export function ModernTemplate({ resume }: Props) {
                 title={exp.position}
                 subtitle={`${exp.company}${exp.location ? ` · ${exp.location}` : ''}`}
                 date={`${exp.startDate} – ${exp.current ? 'Present' : exp.endDate ?? ''}`}
-                description={exp.description}
+                description={descItems(exp.description)}
                 highlights={exp.highlights}
               />
             ))}
@@ -111,8 +118,9 @@ function Section({ title, color, children }: { title: string; color: string; chi
 }
 
 function Entry({ title, subtitle, date, description, highlights }: {
-  title: string; subtitle?: string; date?: string; description?: string; highlights?: string[];
+  title: string; subtitle?: string; date?: string; description?: string[]; highlights?: string[];
 }) {
+  const allBullets = [...(description ?? []), ...(highlights ?? [])].filter(Boolean);
   return (
     <div style={{ marginBottom: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -120,10 +128,9 @@ function Entry({ title, subtitle, date, description, highlights }: {
         {date && <span style={{ fontSize: '10pt', color: '#666' }}>{date}</span>}
       </div>
       {subtitle && <div style={{ color: '#555', fontSize: '10pt' }}>{subtitle}</div>}
-      {description && <p style={{ margin: '4px 0 0', fontSize: '10pt' }}>{description}</p>}
-      {highlights && highlights.length > 0 && (
+      {allBullets.length > 0 && (
         <ul style={{ margin: '4px 0 0', paddingLeft: '18px' }}>
-          {highlights.map((h, i) => <li key={i} style={{ fontSize: '10pt' }}>{h}</li>)}
+          {allBullets.map((h, i) => <li key={i} style={{ fontSize: '10pt' }}>{h}</li>)}
         </ul>
       )}
     </div>
