@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
+import * as path from 'path';
 import puppeteer from 'puppeteer';
 import { AppLogger } from '@resume-platform/logger';
 import { ResumeData } from '@resume-platform/shared-types';
@@ -28,7 +30,11 @@ export class PdfService {
 
     try {
       const page = await browser.newPage();
+      // Use a wide enough viewport so text doesn't reflow compared to the preview
+      await page.setViewport({ width: 1200, height: 1600, deviceScaleFactor: 1 });
       await page.setContent(html, { waitUntil: 'networkidle0' });
+      // Ensure all @font-face fonts are fully loaded before capturing (string form avoids TS dom-lib error)
+      await page.evaluate('document.fonts.ready');
 
       const pdfBuffer = await page.pdf({
         format: format as 'A4' | 'Letter',
@@ -50,12 +56,98 @@ export class PdfService {
     return this.buildGenericHtml(resume, template);
   }
 
+  // ─── Font lookup ──────────────────────────────────────────────────────────
+  private static readonly FONTS: Record<string, { name: string; stack: string; pkg: string; weights: number[] }> = {
+    'roboto':            { name: 'Roboto',            stack: "'Roboto', 'Segoe UI', Arial, sans-serif",              pkg: 'roboto',            weights: [300, 400, 700] },
+    'lato':              { name: 'Lato',              stack: "'Lato', 'Helvetica Neue', Arial, sans-serif",           pkg: 'lato',              weights: [300, 400, 700] },
+    'open-sans':         { name: 'Open Sans',         stack: "'Open Sans', 'Helvetica Neue', Arial, sans-serif",      pkg: 'open-sans',         weights: [300, 400, 600, 700] },
+    'raleway':           { name: 'Raleway',           stack: "'Raleway', 'Trebuchet MS', Arial, sans-serif",          pkg: 'raleway',           weights: [300, 400, 700] },
+    'merriweather':      { name: 'Merriweather',      stack: "'Merriweather', Georgia, 'Times New Roman', serif",     pkg: 'merriweather',      weights: [300, 400, 700] },
+    'playfair-display':  { name: 'Playfair Display',  stack: "'Playfair Display', Georgia, 'Times New Roman', serif", pkg: 'playfair-display',  weights: [400, 700] },
+    'eb-garamond':       { name: 'EB Garamond',       stack: "'EB Garamond', Garamond, Georgia, serif",               pkg: 'eb-garamond',       weights: [400, 700] },
+    'libre-baskerville': { name: 'Libre Baskerville', stack: "'Libre Baskerville', Baskerville, Georgia, serif",      pkg: 'libre-baskerville', weights: [400, 700] },
+  };
+
+  private getFontStack(fontId: string | undefined): string {
+    return PdfService.FONTS[fontId ?? 'roboto']?.stack ?? PdfService.FONTS['roboto'].stack;
+  }
+
+  /** In-memory cache: fontId → embedded <style> block with base64 woff2 data */
+  private readonly fontStyleCache = new Map<string, string>();
+
+  /**
+   * Build a <style> block with @font-face rules that embed the font's woff2
+   * files as base64 data URIs — read from @fontsource/* packages installed in
+   * node_modules.  No network access needed at PDF render time.
+   * Returns empty string if the package isn't installed yet (run pnpm install).
+   */
+  private buildLocalFontStyle(fontId: string | undefined): string {
+    const key = fontId ?? 'roboto';
+    if (this.fontStyleCache.has(key)) return this.fontStyleCache.get(key)!;
+
+    const fontConf = PdfService.FONTS[key] ?? PdfService.FONTS['roboto'];
+
+    try {
+      // Locate the @fontsource package directory
+      const pkgJsonPath = require.resolve(`@fontsource/${fontConf.pkg}/package.json`);
+      const pkgDir = path.dirname(pkgJsonPath);
+      const filesDir = path.join(pkgDir, 'files');
+
+      if (!fs.existsSync(filesDir)) {
+        this.logger.warn(`@fontsource/${fontConf.pkg}/files not found — run pnpm install`);
+        return '';
+      }
+
+      // Find all latin-normal woff2 files (skip latin-ext, cyrillic, greek, etc.)
+      const woff2Files = fs.readdirSync(filesDir).filter(
+        (f) => f.endsWith('-normal.woff2') &&
+               f.includes('-latin-') &&
+               !f.includes('-latin-ext'),
+      );
+
+      let css = '';
+      for (const fileName of woff2Files) {
+        const weightMatch = fileName.match(/-latin-(\d+)-normal\.woff2$/);
+        if (!weightMatch) continue;
+        const weight = parseInt(weightMatch[1], 10);
+        if (!fontConf.weights.includes(weight)) continue;
+
+        const b64 = fs.readFileSync(path.join(filesDir, fileName)).toString('base64');
+        css += `@font-face{font-family:'${fontConf.name}';font-style:normal;font-weight:${weight};font-display:swap;src:url('data:font/woff2;base64,${b64}') format('woff2');}\n`;
+      }
+
+      if (!css) {
+        this.logger.warn(`No woff2 files found for font ${key}`);
+        return '';
+      }
+
+      const style = `<style>${css}</style>`;
+      this.fontStyleCache.set(key, style);
+      this.logger.info(`Font embedded from disk: ${key}`);
+      return style;
+    } catch (err) {
+      this.logger.warn(`Font embed failed for ${key} — falling back to no custom font`, { err });
+      return '';
+    }
+  }
+
   // ─── Elegant template ──────────────────────────────────────────────────────
   /** Normalise description: may be legacy string or new string[] */
   private toDescItems(d: string | string[] | undefined): string[] {
     if (!d) return [];
     if (Array.isArray(d)) return (d as string[]).filter(Boolean);
     return (d as string).trim() ? [(d as string).trim()] : [];
+  }
+
+  /** Escape user-supplied text so that < > & " ' don't break the HTML template */
+  private e(text: string | undefined | null): string {
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   private buildElegantHtml(resume: ResumeData): string {
@@ -74,7 +166,7 @@ export class PdfService {
 
     const skillsGrid = (list: typeof skills) => {
       if (!list.length) return '';
-      const cells = list.map(s => `<td class="skill-cell">${s.name}</td>`);
+      const cells = list.map(s => `<td class="skill-cell">${this.e(s.name)}</td>`);
       // pad to multiple of 4
       while (cells.length % 4 !== 0) cells.push('<td></td>');
       const rows: string[] = [];
@@ -86,7 +178,7 @@ export class PdfService {
 
     const sectionHtml = (title: string, body: string) => `
       <div class="section">
-        <h2>${title}</h2>
+        <h2>${this.e(title)}</h2>
         <hr class="section-rule"/>
         ${body}
       </div>`;
@@ -95,14 +187,14 @@ export class PdfService {
       <div class="entry">
         <div class="entry-header">
           <span class="entry-title">
-            ${exp.company}${exp.position ? `<span class="sep"> // ${exp.position} //</span>` : ''}
+            ${this.e(exp.company)}${exp.position ? `<span class="sep"> // ${this.e(exp.position)} //</span>` : ''}
           </span>
-          <span class="date">${exp.startDate} – ${exp.current ? 'Present' : (exp.endDate ?? '')}</span>
+          <span class="date">${this.e(exp.startDate)} – ${exp.current ? 'Present' : this.e(exp.endDate ?? '')}</span>
         </div>
-        ${exp.location ? `<div class="entry-sub">${exp.location}</div>` : ''}
+        ${exp.location ? `<div class="entry-sub">${this.e(exp.location)}</div>` : ''}
         ${(() => {
           const bullets = [...this.toDescItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean);
-          return bullets.length ? `<ul>${bullets.map((h: string) => `<li>${h}</li>`).join('')}</ul>` : '';
+          return bullets.length ? `<ul>${bullets.map((h: string) => `<li>${this.e(h)}</li>`).join('')}</ul>` : '';
         })()}
       </div>`).join('')) : '';
 
@@ -110,15 +202,15 @@ export class PdfService {
       <div class="entry">
         <div class="entry-header">
           <span class="entry-title">
-            ${edu.degree}${edu.field ? ` | ${edu.field}` : ''}
-            <span class="sep"> / ${edu.institution} /</span>
+            ${this.e(edu.degree)}${edu.field ? ` | ${this.e(edu.field)}` : ''}
+            <span class="sep"> / ${this.e(edu.institution)} /</span>
           </span>
-          <span class="date">${edu.startDate} – ${edu.current ? 'Present' : (edu.endDate ?? '')}</span>
+          <span class="date">${this.e(edu.startDate)} – ${edu.current ? 'Present' : this.e(edu.endDate ?? '')}</span>
         </div>
-        ${edu.gpa ? `<div class="entry-sub">GPA: ${edu.gpa}</div>` : ''}
+        ${edu.gpa ? `<div class="entry-sub">GPA: ${this.e(edu.gpa)}</div>` : ''}
         ${(() => {
           const bullets = [...this.toDescItems(edu.description), ...(edu.highlights ?? [])].filter(Boolean);
-          return bullets.length ? `<ul>${bullets.map((h: string) => `<li>${h}</li>`).join('')}</ul>` : '';
+          return bullets.length ? `<ul>${bullets.map((h: string) => `<li>${this.e(h)}</li>`).join('')}</ul>` : '';
         })()}
       </div>`).join('')) : '';
 
@@ -132,9 +224,9 @@ export class PdfService {
       <div class="entry">
         <div class="entry-header">
           <span class="entry-title">
-            ${cert.name}${cert.issuer ? `<span class="sep"> // ${cert.issuer}</span>` : ''}
+            ${this.e(cert.name)}${cert.issuer ? `<span class="sep"> // ${this.e(cert.issuer)}</span>` : ''}
           </span>
-          <span class="date">${cert.date}</span>
+          <span class="date">${this.e(cert.date)}</span>
         </div>
       </div>`).join('')) : '';
 
@@ -142,25 +234,26 @@ export class PdfService {
       <div class="entry">
         <div class="entry-header">
           <span class="entry-title">
-            ${proj.name}${proj.technologies?.length ? sep(proj.technologies.join(', ')) : ''}
+            ${this.e(proj.name)}${proj.technologies?.length ? sep(proj.technologies.map(t => this.e(t)).join(', ')) : ''}
           </span>
-          ${proj.startDate ? `<span class="date">${proj.startDate}${proj.endDate ? ` – ${proj.endDate}` : ''}</span>` : ''}
+          ${proj.startDate ? `<span class="date">${this.e(proj.startDate)}${proj.endDate ? ` – ${this.e(proj.endDate)}` : ''}</span>` : ''}
         </div>
-        ${proj.description ? `<p>${proj.description}</p>` : ''}
-        ${proj.roles ? `<p><strong>Roles &amp; Responsibilities:</strong> ${proj.roles}</p>` : ''}
+        ${proj.description ? `<p>${this.e(proj.description)}</p>` : ''}
+        ${proj.roles ? `<p><strong>Roles &amp; Responsibilities:</strong> ${this.e(proj.roles)}</p>` : ''}
+        ${(proj.highlights ?? []).filter(Boolean).length ? `<ul>${(proj.highlights ?? []).filter(Boolean).map((h: string) => `<li>${this.e(h)}</li>`).join('')}</ul>` : ''}
       </div>`).join('')) : '';
 
     const softSkillsHtml = (softSkills ?? []).length
       ? sectionHtml('Soft Skills', `
           <div class="soft-skills-row">
-            ${(softSkills ?? []).map((sk: string) => `<span class="soft-skill">${sk}</span>`).join('<span class="soft-sep"> · </span>')}
+            ${(softSkills ?? []).map((sk: string) => `<span class="soft-skill">${this.e(sk)}</span>`).join('<span class="soft-sep"> · </span>')}
           </div>`) : '';
 
     const languagesHtml = (languages ?? []).length
       ? sectionHtml('Languages', `
           <table class="skills-table"><tbody><tr>
             ${(languages ?? []).map((l: any) =>
-              `<td class="skill-cell"><strong>${l.name}</strong>${l.proficiency ? `<span class="lang-prof"> · ${l.proficiency}</span>` : ''}</td>`
+              `<td class="skill-cell"><strong>${this.e(l.name)}</strong>${l.proficiency ? `<span class="lang-prof"> · ${this.e(l.proficiency)}</span>` : ''}</td>`
             ).join('')}
           </tr></tbody></table>`) : '';
 
@@ -169,11 +262,11 @@ export class PdfService {
         <div class="entry">
           <div class="entry-header">
             <span class="entry-title">
-              ${item.title}${item.subtitle ? `<span class="sep"> // ${item.subtitle}</span>` : ''}
+              ${this.e(item.title)}${item.subtitle ? `<span class="sep"> // ${this.e(item.subtitle)}</span>` : ''}
             </span>
-            ${item.date ? `<span class="date">${item.date}</span>` : ''}
+            ${item.date ? `<span class="date">${this.e(item.date)}</span>` : ''}
           </div>
-          ${item.description ? `<p>${item.description}</p>` : ''}
+          ${item.description ? `<p>${this.e(item.description)}</p>` : ''}
         </div>`).join('')
     )).join('');
 
@@ -182,10 +275,11 @@ export class PdfService {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  ${this.buildLocalFontStyle(resume.fontFamily)}
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: Georgia, 'Times New Roman', serif;
+      font-family: ${this.getFontStack(resume.fontFamily)};
       font-size: 10pt;
       color: #222;
       line-height: 1.55;
@@ -275,8 +369,8 @@ export class PdfService {
         }
       </div>
       <div class="header-text">
-        <h1>${p.fullName || 'YOUR NAME'}</h1>
-        ${p.professionalTitle ? `<div class="subtitle">${p.professionalTitle}</div>` : ''}
+        <h1>${this.e(p.fullName) || 'YOUR NAME'}</h1>
+        ${p.professionalTitle ? `<div class="subtitle">${this.e(p.professionalTitle)}</div>` : ''}
       </div>
     </div>
 
@@ -289,11 +383,11 @@ export class PdfService {
         p.location,
         p.website,
       ].filter(Boolean).map((item, i, arr) =>
-        `<span>${item}</span>${i < arr.length - 1 ? '<span class="divider">|</span>' : ''}`
+        `<span>${this.e(item)}</span>${i < arr.length - 1 ? '<span class="divider">|</span>' : ''}`
       ).join('')}
     </div>
 
-    ${summary ? sectionHtml('Summary', `<p style="margin-top:6px;font-size:9.5pt;line-height:1.6">${summary}</p>`) : ''}
+    ${summary ? sectionHtml('Summary', `<p style="margin-top:6px;font-size:9.5pt;line-height:1.6">${this.e(summary)}</p>`) : ''}
     ${experienceHtml}
     ${educationHtml}
     ${proSkillsHtml}
@@ -311,7 +405,7 @@ export class PdfService {
 
   // ─── Generic template (modern / classic / minimal / creative) ─────────────
   private buildGenericHtml(resume: ResumeData, template: string): string {
-    const templateStyles = this.getTemplateStyles(template);
+    const templateStyles = this.getTemplateStyles(template, resume.fontFamily);
     const { personalInfo, summary, experience, education, skills, softSkills, languages, projects, certifications } =
       resume;
 
@@ -320,24 +414,25 @@ export class PdfService {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  ${this.buildLocalFontStyle(resume.fontFamily)}
   <style>${templateStyles}</style>
 </head>
 <body>
   <div class="resume">
     <header class="header">
-      <h1>${personalInfo.fullName ?? ''}</h1>
-      ${personalInfo.professionalTitle ? `<div class="professional-title">${personalInfo.professionalTitle}</div>` : ''}
+      <h1>${this.e(personalInfo.fullName)}</h1>
+      ${personalInfo.professionalTitle ? `<div class="professional-title">${this.e(personalInfo.professionalTitle)}</div>` : ''}
       <div class="contact">
-        ${personalInfo.email ? `<span>✉ ${personalInfo.email}</span>` : ''}
-        ${personalInfo.phone ? `<span>📞 ${personalInfo.phone}</span>` : ''}
-        ${personalInfo.location ? `<span>📍 ${personalInfo.location}</span>` : ''}
-        ${personalInfo.linkedin ? `<span>${personalInfo.linkedin}</span>` : ''}
-        ${personalInfo.github ? `<span>${personalInfo.github}</span>` : ''}
-        ${personalInfo.website ? `<span>${personalInfo.website}</span>` : ''}
+        ${personalInfo.email ? `<span>✉ ${this.e(personalInfo.email)}</span>` : ''}
+        ${personalInfo.phone ? `<span>📞 ${this.e(personalInfo.phone)}</span>` : ''}
+        ${personalInfo.location ? `<span>📍 ${this.e(personalInfo.location)}</span>` : ''}
+        ${personalInfo.linkedin ? `<span>${this.e(personalInfo.linkedin)}</span>` : ''}
+        ${personalInfo.github ? `<span>${this.e(personalInfo.github)}</span>` : ''}
+        ${personalInfo.website ? `<span>${this.e(personalInfo.website)}</span>` : ''}
       </div>
     </header>
 
-    ${summary ? `<section class="section"><h2>Summary</h2><p>${summary}</p></section>` : ''}
+    ${summary ? `<section class="section"><h2>Summary</h2><p>${this.e(summary)}</p></section>` : ''}
 
     ${
       experience?.length
@@ -345,12 +440,12 @@ export class PdfService {
         ${experience.map((exp: any) => `
           <div class="entry">
             <div class="entry-header">
-              <strong>${exp.position}</strong> — ${exp.company}${exp.location ? ` · ${exp.location}` : ''}
-              <span class="date">${exp.startDate} – ${exp.current ? 'Present' : exp.endDate ?? ''}</span>
+              <strong>${this.e(exp.position)}</strong> — ${this.e(exp.company)}${exp.location ? ` · ${this.e(exp.location)}` : ''}
+              <span class="date">${this.e(exp.startDate)} – ${exp.current ? 'Present' : this.e(exp.endDate ?? '')}</span>
             </div>
             ${(() => {
               const bullets = [...this.toDescItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean);
-              return bullets.length ? `<ul>${bullets.map((h: string) => `<li>${h}</li>`).join('')}</ul>` : '';
+              return bullets.length ? `<ul>${bullets.map((h: string) => `<li>${this.e(h)}</li>`).join('')}</ul>` : '';
             })()}
           </div>`).join('')}
         </section>`
@@ -363,13 +458,13 @@ export class PdfService {
         ${education.map((edu: any) => `
           <div class="entry">
             <div class="entry-header">
-              <strong>${edu.degree} in ${edu.field}</strong> — ${edu.institution}
-              <span class="date">${edu.startDate} – ${edu.current ? 'Present' : edu.endDate ?? ''}</span>
+              <strong>${this.e(edu.degree)} in ${this.e(edu.field)}</strong> — ${this.e(edu.institution)}
+              <span class="date">${this.e(edu.startDate)} – ${edu.current ? 'Present' : this.e(edu.endDate ?? '')}</span>
             </div>
-            ${edu.gpa ? `<p>GPA: ${edu.gpa}</p>` : ''}
+            ${edu.gpa ? `<p>GPA: ${this.e(edu.gpa)}</p>` : ''}
             ${(() => {
               const bullets = [...this.toDescItems(edu.description), ...(edu.highlights ?? [])].filter(Boolean);
-              return bullets.length ? `<ul>${bullets.map((h: string) => `<li>${h}</li>`).join('')}</ul>` : '';
+              return bullets.length ? `<ul>${bullets.map((h: string) => `<li>${this.e(h)}</li>`).join('')}</ul>` : '';
             })()}
           </div>`).join('')}
         </section>`
@@ -380,7 +475,7 @@ export class PdfService {
       skills?.length
         ? `<section class="section"><h2>Skills</h2>
           <div class="skills-grid">
-            ${skills.map((s: any) => `<span class="skill-tag">${s.name}</span>`).join('')}
+            ${skills.map((s: any) => `<span class="skill-tag">${this.e(s.name)}</span>`).join('')}
           </div>
         </section>`
         : ''
@@ -392,12 +487,14 @@ export class PdfService {
         ${projects.map((proj: any) => `
           <div class="entry">
             <div class="entry-header">
-              <strong>${proj.name}</strong>
-              ${proj.url ? `<a href="${proj.url}">${proj.url}</a>` : ''}
+              <strong>${this.e(proj.name)}</strong>
+              ${(proj.startDate || proj.endDate) ? `<span class="date">${this.e(proj.startDate ?? '')}${proj.endDate ? ` – ${this.e(proj.endDate)}` : ''}</span>` : ''}
+              ${proj.url ? `<a href="${this.e(proj.url)}">${this.e(proj.url)}</a>` : ''}
             </div>
-            ${proj.description ? `<p>${proj.description}</p>` : ''}
-            ${proj.roles ? `<p><strong>Roles &amp; Responsibilities:</strong> ${proj.roles}</p>` : ''}
-            ${proj.technologies?.length ? `<div class="skills-grid">${proj.technologies.map((t: string) => `<span class="skill-tag">${t}</span>`).join('')}</div>` : ''}
+            ${proj.technologies?.length ? `<div class="skills-grid" style="margin-top:4px;">${proj.technologies.map((t: string) => `<span class="skill-tag">${this.e(t)}</span>`).join('')}</div>` : ''}
+            ${proj.description ? `<p>${this.e(proj.description)}</p>` : ''}
+            ${proj.roles ? `<p><strong>Roles &amp; Responsibilities:</strong> ${this.e(proj.roles)}</p>` : ''}
+            ${(proj.highlights ?? []).length ? `<ul>${(proj.highlights ?? []).map((h: string) => `<li>${this.e(h)}</li>`).join('')}</ul>` : ''}
           </div>`).join('')}
         </section>`
         : ''
@@ -409,8 +506,8 @@ export class PdfService {
         ${certifications.map((cert: any) => `
           <div class="entry">
             <div class="entry-header">
-              <strong>${cert.name}</strong> — ${cert.issuer}
-              <span class="date">${cert.date}</span>
+              <strong>${this.e(cert.name)}</strong> — ${this.e(cert.issuer)}
+              <span class="date">${this.e(cert.date)}</span>
             </div>
           </div>`).join('')}
         </section>`
@@ -421,7 +518,7 @@ export class PdfService {
       (softSkills ?? []).length
         ? `<section class="section"><h2>Soft Skills</h2>
           <div class="skills-grid">
-            ${(softSkills ?? []).map((s: string) => `<span class="skill-tag">${s}</span>`).join('')}
+            ${(softSkills ?? []).map((s: string) => `<span class="skill-tag">${this.e(s)}</span>`).join('')}
           </div>
         </section>`
         : ''
@@ -432,7 +529,7 @@ export class PdfService {
         ? `<section class="section"><h2>Languages</h2>
           <div class="lang-list">
             ${(languages ?? []).map((l: any) =>
-              `<span class="lang-item"><strong>${l.name}</strong>${l.proficiency ? ` <span class="lang-prof">· ${l.proficiency}</span>` : ''}</span>`
+              `<span class="lang-item"><strong>${this.e(l.name)}</strong>${l.proficiency ? ` <span class="lang-prof">· ${this.e(l.proficiency)}</span>` : ''}</span>`
             ).join('')}
           </div>
         </section>`
@@ -443,10 +540,11 @@ export class PdfService {
 </html>`;
   }
 
-  private getTemplateStyles(template: string): string {
+  private getTemplateStyles(template: string, fontId?: string): string {
+    const fontStack = this.getFontStack(fontId);
     const base = `
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.5; }
+      body { font-family: ${fontStack}; font-size: 11pt; color: #222; line-height: 1.5; }
       .resume { max-width: 800px; margin: 0 auto; padding: 20px; }
       .section { margin-bottom: 20px; }
       .section h2 { font-size: 14pt; border-bottom: 2px solid currentColor; padding-bottom: 4px; margin-bottom: 12px; }

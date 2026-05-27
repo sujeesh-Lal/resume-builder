@@ -1,4 +1,5 @@
 import type { ResumeData } from '@resume-platform/shared-types';
+import { getFontOption } from '../../lib/fonts';
 
 interface Props { resume: ResumeData }
 
@@ -10,9 +11,10 @@ function descItems(d: string | string[] | undefined): string[] {
 
 export function CreativeTemplate({ resume }: Props) {
   const { personalInfo: p, summary, experience, education, skills, softSkills, languages, projects, certifications } = resume;
+  const font = getFontOption(resume.fontFamily);
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', fontSize: '11pt', color: '#222', lineHeight: '1.5' }}>
+    <div style={{ fontFamily: font.stack, fontSize: '11pt', color: '#222', lineHeight: '1.5' }}>
       {/* Gradient header */}
       <div style={{ background: 'linear-gradient(135deg, #7c3aed, #db2777)', color: 'white', padding: '36px 32px', borderRadius: '0 0 12px 12px' }}>
         <h1 style={{ margin: 0, fontSize: '26pt', fontWeight: 700, letterSpacing: '-0.5px' }}>{p.fullName || 'Your Name'}</h1>

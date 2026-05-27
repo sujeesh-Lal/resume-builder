@@ -1,4 +1,5 @@
 import type { ResumeData } from '@resume-platform/shared-types';
+import { getFontOption } from '../../lib/fonts';
 
 interface Props { resume: ResumeData }
 
@@ -10,9 +11,10 @@ function descItems(d: string | string[] | undefined): string[] {
 
 export function ClassicTemplate({ resume }: Props) {
   const { personalInfo: p, summary, experience, education, skills, softSkills, languages, projects, certifications } = resume;
+  const font = getFontOption(resume.fontFamily);
 
   return (
-    <div style={{ fontFamily: 'Georgia, serif', fontSize: '11pt', color: '#111', lineHeight: '1.6', padding: '32px' }}>
+    <div style={{ fontFamily: font.stack, fontSize: '11pt', color: '#111', lineHeight: '1.6', padding: '32px' }}>
       {/* Header - centered */}
       <div style={{ textAlign: 'center', borderBottom: '3px double #333', paddingBottom: '16px', marginBottom: '20px' }}>
         <h1 style={{ margin: 0, fontSize: '22pt', letterSpacing: '1px' }}>{p.fullName || 'Your Name'}</h1>

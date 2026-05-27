@@ -87,12 +87,23 @@ export interface Language {
 
 export type ResumeTemplate = 'modern' | 'classic' | 'minimal' | 'creative' | 'elegant';
 
+export type ResumeFont =
+  | 'roboto'
+  | 'lato'
+  | 'open-sans'
+  | 'raleway'
+  | 'merriweather'
+  | 'playfair-display'
+  | 'eb-garamond'
+  | 'libre-baskerville';
+
 export interface ResumeData {
   id: string;
   guestId?: string;
   userId?: string;
   title: string;
   template: ResumeTemplate;
+  fontFamily?: ResumeFont;
   personalInfo: PersonalInfo;
   summary: string;
   experience: WorkExperience[];

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type {
   ResumeData,
   ResumeTemplate,
+  ResumeFont,
   PersonalInfo,
   WorkExperience,
   Education,
@@ -101,6 +102,7 @@ interface ResumeStore {
 
   // Resume mutations
   setTemplate: (template: ResumeTemplate) => void;
+  setFontFamily: (font: ResumeFont) => void;
   setPersonalInfo: (info: Partial<PersonalInfo>) => void;
   setSummary: (summary: string) => void;
   setTitle: (title: string) => void;
@@ -173,6 +175,9 @@ export const useResumeStore = create<ResumeStore>()(
 
       setTemplate: (template) =>
         set((s) => ({ resume: { ...s.resume, template, updatedAt: new Date().toISOString() } })),
+
+      setFontFamily: (fontFamily) =>
+        set((s) => ({ resume: { ...s.resume, fontFamily, updatedAt: new Date().toISOString() } })),
 
       setPersonalInfo: (info) =>
         set((s) => ({

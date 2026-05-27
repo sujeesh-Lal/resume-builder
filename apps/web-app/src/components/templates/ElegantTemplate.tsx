@@ -1,4 +1,5 @@
 import type { ResumeData, Skill } from '@resume-platform/shared-types';
+import { getFontOption } from '../../lib/fonts';
 
 interface Props { resume: ResumeData }
 
@@ -9,7 +10,7 @@ function descItems(d: string | string[] | undefined): string[] {
 }
 
 // ─── Styling constants ────────────────────────────────────────────────────────
-const FONT = "'Georgia', 'Times New Roman', serif";
+const FONT_DEFAULT = "'Georgia', 'Times New Roman', serif";
 const SANS = "'Arial', 'Helvetica Neue', sans-serif";
 const COLOR_TEXT = '#222222';
 const COLOR_MUTED = '#555555';
@@ -73,6 +74,7 @@ function SkillsGrid({ skills }: { skills: Skill[] }) {
 // ─── Main template ────────────────────────────────────────────────────────────
 export function ElegantTemplate({ resume }: Props) {
   const { personalInfo: p, summary, experience, education, skills, softSkills, languages, projects, certifications, customSections } = resume;
+  const FONT = getFontOption(resume.fontFamily).stack ?? FONT_DEFAULT;
 
   // Split skills by category if provided, otherwise treat all as "Professional Skills"
   const professionalSkills = skills.filter(sk => !sk.category || sk.category.toLowerCase() !== 'technical');

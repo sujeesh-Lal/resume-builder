@@ -1,4 +1,5 @@
 import type { ResumeData } from '@resume-platform/shared-types';
+import { getFontOption } from '../../lib/fonts';
 
 interface Props { resume: ResumeData }
 
@@ -10,9 +11,10 @@ function descItems(d: string | string[] | undefined): string[] {
 
 export function MinimalTemplate({ resume }: Props) {
   const { personalInfo: p, summary, experience, education, skills, softSkills, languages, projects, certifications } = resume;
+  const font = getFontOption(resume.fontFamily);
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', fontSize: '11pt', color: '#333', lineHeight: '1.6', padding: '40px 48px' }}>
+    <div style={{ fontFamily: font.stack, fontSize: '11pt', color: '#333', lineHeight: '1.6', padding: '40px 48px' }}>
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ margin: 0, fontSize: '26pt', fontWeight: 300, color: '#111' }}>{p.fullName || 'Your Name'}</h1>
         {p.professionalTitle && (
