@@ -59,7 +59,7 @@ export class PdfService {
   }
 
   private buildElegantHtml(resume: ResumeData): string {
-    const { personalInfo: p, summary, experience, education, skills, projects, certifications, customSections } = resume;
+    const { personalInfo: p, summary, experience, education, skills, softSkills, languages, projects, certifications, customSections } = resume;
 
     const professionalSkills = skills.filter(s => !s.category || s.category.toLowerCase() !== 'technical');
     const technicalSkills    = skills.filter(s => s.category?.toLowerCase() === 'technical');
@@ -116,7 +116,10 @@ export class PdfService {
           <span class="date">${edu.startDate} – ${edu.current ? 'Present' : (edu.endDate ?? '')}</span>
         </div>
         ${edu.gpa ? `<div class="entry-sub">GPA: ${edu.gpa}</div>` : ''}
-        ${edu.highlights?.length ? `<ul>${edu.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>` : ''}
+        ${(() => {
+          const bullets = [...this.toDescItems(edu.description), ...(edu.highlights ?? [])].filter(Boolean);
+          return bullets.length ? `<ul>${bullets.map((h: string) => `<li>${h}</li>`).join('')}</ul>` : '';
+        })()}
       </div>`).join('')) : '';
 
     const proSkillsHtml = professionalSkills.length
@@ -144,8 +147,22 @@ export class PdfService {
           ${proj.startDate ? `<span class="date">${proj.startDate}${proj.endDate ? ` – ${proj.endDate}` : ''}</span>` : ''}
         </div>
         ${proj.description ? `<p>${proj.description}</p>` : ''}
-        ${proj.highlights?.length ? `<ul>${proj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>` : ''}
+        ${proj.roles ? `<p><strong>Roles &amp; Responsibilities:</strong> ${proj.roles}</p>` : ''}
       </div>`).join('')) : '';
+
+    const softSkillsHtml = (softSkills ?? []).length
+      ? sectionHtml('Soft Skills', `
+          <div class="soft-skills-row">
+            ${(softSkills ?? []).map((sk: string) => `<span class="soft-skill">${sk}</span>`).join('<span class="soft-sep"> · </span>')}
+          </div>`) : '';
+
+    const languagesHtml = (languages ?? []).length
+      ? sectionHtml('Languages', `
+          <table class="skills-table"><tbody><tr>
+            ${(languages ?? []).map((l: any) =>
+              `<td class="skill-cell"><strong>${l.name}</strong>${l.proficiency ? `<span class="lang-prof"> · ${l.proficiency}</span>` : ''}</td>`
+            ).join('')}
+          </tr></tbody></table>`) : '';
 
     const customHtml = (customSections ?? []).map((cs: any) => sectionHtml(cs.title,
       cs.items.map((item: any) => `
@@ -238,16 +255,28 @@ export class PdfService {
       font-family: Arial, sans-serif; font-size: 9pt;
       color: #222; padding-bottom: 4px; width: 25%;
     }
+
+    /* ── Soft Skills ── */
+    .soft-skills-row { margin-top: 6px; font-family: Arial, sans-serif; font-size: 9pt; color: #222; }
+    .soft-sep { color: #bbb; margin: 0 4px; }
+
+    /* ── Languages ── */
+    .lang-prof { color: #555; font-size: 8.5pt; font-weight: 400; }
   </style>
 </head>
 <body>
   <div class="resume">
 
     <div class="header">
-      <div class="avatar"><span>${initials}</span></div>
+      <div class="avatar">
+        ${p.photo
+          ? `<img src="${p.photo}" alt="${p.fullName}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+          : `<span>${initials}</span>`
+        }
+      </div>
       <div class="header-text">
         <h1>${p.fullName || 'YOUR NAME'}</h1>
-        <div class="subtitle">Professional Title</div>
+        ${p.professionalTitle ? `<div class="subtitle">${p.professionalTitle}</div>` : ''}
       </div>
     </div>
 
@@ -270,6 +299,8 @@ export class PdfService {
     ${proSkillsHtml}
     ${techSkillsHtml}
     ${certHtml}
+    ${softSkillsHtml}
+    ${languagesHtml}
     ${projectsHtml}
     ${customHtml}
 
@@ -281,7 +312,7 @@ export class PdfService {
   // ─── Generic template (modern / classic / minimal / creative) ─────────────
   private buildGenericHtml(resume: ResumeData, template: string): string {
     const templateStyles = this.getTemplateStyles(template);
-    const { personalInfo, summary, experience, education, skills, projects, certifications } =
+    const { personalInfo, summary, experience, education, skills, softSkills, languages, projects, certifications } =
       resume;
 
     return `
@@ -295,6 +326,7 @@ export class PdfService {
   <div class="resume">
     <header class="header">
       <h1>${personalInfo.fullName ?? ''}</h1>
+      ${personalInfo.professionalTitle ? `<div class="professional-title">${personalInfo.professionalTitle}</div>` : ''}
       <div class="contact">
         ${personalInfo.email ? `<span>✉ ${personalInfo.email}</span>` : ''}
         ${personalInfo.phone ? `<span>📞 ${personalInfo.phone}</span>` : ''}
@@ -335,6 +367,10 @@ export class PdfService {
               <span class="date">${edu.startDate} – ${edu.current ? 'Present' : edu.endDate ?? ''}</span>
             </div>
             ${edu.gpa ? `<p>GPA: ${edu.gpa}</p>` : ''}
+            ${(() => {
+              const bullets = [...this.toDescItems(edu.description), ...(edu.highlights ?? [])].filter(Boolean);
+              return bullets.length ? `<ul>${bullets.map((h: string) => `<li>${h}</li>`).join('')}</ul>` : '';
+            })()}
           </div>`).join('')}
         </section>`
         : ''
@@ -360,6 +396,7 @@ export class PdfService {
               ${proj.url ? `<a href="${proj.url}">${proj.url}</a>` : ''}
             </div>
             ${proj.description ? `<p>${proj.description}</p>` : ''}
+            ${proj.roles ? `<p><strong>Roles &amp; Responsibilities:</strong> ${proj.roles}</p>` : ''}
             ${proj.technologies?.length ? `<div class="skills-grid">${proj.technologies.map((t: string) => `<span class="skill-tag">${t}</span>`).join('')}</div>` : ''}
           </div>`).join('')}
         </section>`
@@ -376,6 +413,28 @@ export class PdfService {
               <span class="date">${cert.date}</span>
             </div>
           </div>`).join('')}
+        </section>`
+        : ''
+    }
+
+    ${
+      (softSkills ?? []).length
+        ? `<section class="section"><h2>Soft Skills</h2>
+          <div class="skills-grid">
+            ${(softSkills ?? []).map((s: string) => `<span class="skill-tag">${s}</span>`).join('')}
+          </div>
+        </section>`
+        : ''
+    }
+
+    ${
+      (languages ?? []).length
+        ? `<section class="section"><h2>Languages</h2>
+          <div class="lang-list">
+            ${(languages ?? []).map((l: any) =>
+              `<span class="lang-item"><strong>${l.name}</strong>${l.proficiency ? ` <span class="lang-prof">· ${l.proficiency}</span>` : ''}</span>`
+            ).join('')}
+          </div>
         </section>`
         : ''
     }
@@ -396,6 +455,9 @@ export class PdfService {
       .date { font-size: 10pt; color: #666; }
       .skills-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
       .skill-tag { padding: 2px 10px; border-radius: 12px; font-size: 10pt; }
+      .lang-list { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; }
+      .lang-item { font-size: 10pt; }
+      .lang-prof { color: #666; font-size: 9pt; }
       ul { margin-left: 18px; margin-top: 4px; }
       li { font-size: 10pt; margin-bottom: 2px; }
       p { font-size: 10pt; margin-top: 4px; }
@@ -406,24 +468,28 @@ export class PdfService {
       modern: `${base}
         .header { background: #1e40af; color: white; padding: 24px; border-radius: 4px; margin-bottom: 20px; }
         .header h1 { font-size: 22pt; font-weight: 700; }
+        .header .professional-title { font-size: 12pt; font-weight: 400; opacity: 0.85; margin-top: 4px; }
         .header .contact { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 10pt; opacity: 0.9; }
         .section h2 { color: #1e40af; }
         .skill-tag { background: #dbeafe; color: #1e40af; }`,
       classic: `${base}
         .header { border-bottom: 3px double #333; padding-bottom: 16px; margin-bottom: 20px; text-align: center; }
         .header h1 { font-size: 22pt; }
+        .header .professional-title { font-size: 12pt; color: #555; margin-top: 4px; letter-spacing: 0.5px; }
         .header .contact { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 10pt; }
         .section h2 { color: #333; text-transform: uppercase; letter-spacing: 1px; font-size: 11pt; }
         .skill-tag { background: #f3f4f6; color: #333; border: 1px solid #d1d5db; }`,
       minimal: `${base}
         .header { margin-bottom: 24px; }
         .header h1 { font-size: 24pt; font-weight: 300; }
+        .header .professional-title { font-size: 12pt; color: #555; margin-top: 2px; }
         .header .contact { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font-size: 10pt; color: #666; }
         .section h2 { color: #000; font-weight: 400; font-size: 12pt; letter-spacing: 2px; text-transform: uppercase; }
         .skill-tag { background: transparent; border: 1px solid #999; color: #555; }`,
       creative: `${base}
         .header { background: linear-gradient(135deg, #7c3aed, #db2777); color: white; padding: 28px; border-radius: 8px; margin-bottom: 24px; }
         .header h1 { font-size: 22pt; font-weight: 700; }
+        .header .professional-title { font-size: 12pt; font-weight: 400; opacity: 0.9; margin-top: 4px; }
         .header .contact { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 10pt; opacity: 0.85; }
         .section h2 { color: #7c3aed; }
         .skill-tag { background: #f3e8ff; color: #7c3aed; }`,

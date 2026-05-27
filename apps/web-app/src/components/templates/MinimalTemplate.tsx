@@ -9,12 +9,15 @@ function descItems(d: string | string[] | undefined): string[] {
 }
 
 export function MinimalTemplate({ resume }: Props) {
-  const { personalInfo: p, summary, experience, education, skills, projects, certifications } = resume;
+  const { personalInfo: p, summary, experience, education, skills, softSkills, languages, projects, certifications } = resume;
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', fontSize: '11pt', color: '#333', lineHeight: '1.6', padding: '40px 48px' }}>
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ margin: 0, fontSize: '26pt', fontWeight: 300, color: '#111' }}>{p.fullName || 'Your Name'}</h1>
+        {p.professionalTitle && (
+          <div style={{ fontSize: '12pt', fontWeight: 400, color: '#555', marginTop: '2px' }}>{p.professionalTitle}</div>
+        )}
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginTop: '6px', fontSize: '10pt', color: '#777' }}>
           {p.email && <span>{p.email}</span>}
           {p.phone && <span>{p.phone}</span>}
@@ -42,7 +45,7 @@ export function MinimalTemplate({ resume }: Props) {
                 <strong>{exp.position}</strong> <span style={{ color: '#888' }}>at</span> {exp.company}
                 {exp.location && <span style={{ color: '#aaa', fontSize: '10pt' }}> · {exp.location}</span>}
                 {[...descItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '16px', color: '#555' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: '16px', listStyleType: 'disc', color: '#555' }}>
                     {[...descItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean).map((h, i) => (
                       <li key={i} style={{ fontSize: '10pt' }}>{h}</li>
                     ))}
@@ -62,6 +65,13 @@ export function MinimalTemplate({ resume }: Props) {
               <div>
                 <strong>{edu.degree} in {edu.field}</strong><br />
                 <span style={{ color: '#666', fontSize: '10pt' }}>{edu.institution}{edu.gpa ? ` · ${edu.gpa}` : ''}</span>
+                {[...descItems(edu.description), ...(edu.highlights ?? [])].filter(Boolean).length > 0 && (
+                  <ul style={{ margin: '4px 0 0', paddingLeft: '16px', listStyleType: 'disc', color: '#555' }}>
+                    {[...descItems(edu.description), ...(edu.highlights ?? [])].filter(Boolean).map((h, i) => (
+                      <li key={i} style={{ fontSize: '10pt' }}>{h}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
           ))}
@@ -87,6 +97,16 @@ export function MinimalTemplate({ resume }: Props) {
               <strong>{proj.name}</strong>
               {proj.technologies.length > 0 && <span style={{ fontSize: '10pt', color: '#888' }}> — {proj.technologies.join(', ')}</span>}
               {proj.description && <p style={{ margin: '4px 0 0', fontSize: '10pt', color: '#555' }}>{proj.description}</p>}
+              {proj.roles && (
+                <p style={{ margin: '4px 0 0', fontSize: '10pt', color: '#555' }}>
+                  <strong style={{ color: '#333' }}>Roles &amp; Responsibilities:</strong> {proj.roles}
+                </p>
+              )}
+              {proj.highlights?.length > 0 && (
+                <ul style={{ margin: '4px 0 0', paddingLeft: '16px', listStyleType: 'disc', color: '#555' }}>
+                  {proj.highlights.map((h, i) => <li key={i} style={{ fontSize: '10pt' }}>{h}</li>)}
+                </ul>
+              )}
             </div>
           ))}
         </Section>
@@ -100,6 +120,31 @@ export function MinimalTemplate({ resume }: Props) {
               <span style={{ color: '#888' }}>{cert.date}</span>
             </div>
           ))}
+        </Section>
+      )}
+
+      {(softSkills ?? []).length > 0 && (
+        <Section title="Soft Skills">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {(softSkills ?? []).map((sk) => (
+              <span key={sk} style={{ border: '1px solid #ccc', color: '#555', padding: '2px 10px', borderRadius: '4px', fontSize: '10pt' }}>
+                {sk}
+              </span>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {(languages ?? []).length > 0 && (
+        <Section title="Languages">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+            {(languages ?? []).map((lang) => (
+              <span key={lang.id} style={{ fontSize: '10pt' }}>
+                <strong>{lang.name}</strong>
+                {lang.proficiency && <span style={{ color: '#888', fontSize: '9pt' }}> · {lang.proficiency}</span>}
+              </span>
+            ))}
+          </div>
         </Section>
       )}
     </div>

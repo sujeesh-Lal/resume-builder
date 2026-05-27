@@ -4,6 +4,76 @@ import { useResumeStore } from '../../../store/resume.store';
 import { StepLayout } from '../StepLayout';
 import type { Education } from '@resume-platform/shared-types';
 
+// Normalize legacy string description to string[]
+function toDescArray(d: string | string[] | undefined): string[] {
+  if (!d) return [];
+  if (Array.isArray(d)) return d.filter(Boolean);
+  return (d as string).trim() ? [(d as string).trim()] : [];
+}
+
+function BulletListInput({
+  label,
+  placeholder,
+  items,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  items: string[];
+  onChange: (items: string[]) => void;
+}) {
+  const [draft, setDraft] = useState('');
+
+  const add = () => {
+    if (draft.trim()) {
+      onChange([...items, draft.trim()]);
+      setDraft('');
+    }
+  };
+
+  const remove = (i: number) => onChange(items.filter((_, j) => j !== i));
+
+  const update = (i: number, val: string) =>
+    onChange(items.map((item, j) => (j === i ? val : item)));
+
+  return (
+    <div>
+      <label className="form-label">{label}</label>
+      <div className="flex gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
+          className="form-input"
+          placeholder={placeholder}
+        />
+        <button type="button" onClick={add} className="btn-secondary shrink-0">Add</button>
+      </div>
+      {items.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {items.map((item, i) => (
+            <li key={i} className="flex items-center gap-2">
+              <span className="text-primary-500 shrink-0">•</span>
+              <input
+                value={item}
+                onChange={(e) => update(i, e.target.value)}
+                className="form-input flex-1 py-1 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                className="text-red-400 hover:text-red-600 shrink-0 text-lg leading-none"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function EducationForm({
   onSave,
   onCancel,
@@ -14,12 +84,15 @@ function EducationForm({
   initial?: Partial<Education>;
 }) {
   const { register, handleSubmit, watch } = useForm<Education>({
-    defaultValues: { current: false, highlights: [], ...initial },
+    defaultValues: { current: false, description: [], highlights: [], ...initial },
   });
   const isCurrent = watch('current');
+  const [description, setDescription] = useState<string[]>(toDescArray(initial?.description));
+
+  const currentYear = new Date().getFullYear();
 
   const onSubmit = (data: Education) => {
-    onSave({ ...data, id: initial?.id ?? crypto.randomUUID(), highlights: data.highlights ?? [] });
+    onSave({ ...data, id: initial?.id ?? crypto.randomUUID(), description, highlights: [] });
   };
 
   return (
@@ -38,12 +111,27 @@ function EducationForm({
           <input {...register('field', { required: true })} className="form-input" placeholder="Computer Science" />
         </div>
         <div>
-          <label className="form-label">Start Date</label>
-          <input {...register('startDate')} type="month" className="form-input" />
+          <label className="form-label">Start Year</label>
+          <input
+            {...register('startDate')}
+            type="number"
+            min="1950"
+            max={currentYear}
+            className="form-input"
+            placeholder={String(currentYear)}
+          />
         </div>
         <div>
-          <label className="form-label">End Date</label>
-          <input {...register('endDate')} type="month" className="form-input" disabled={isCurrent} />
+          <label className="form-label">End Year</label>
+          <input
+            {...register('endDate')}
+            type="number"
+            min="1950"
+            max={currentYear + 10}
+            className="form-input"
+            placeholder={String(currentYear)}
+            disabled={isCurrent}
+          />
           <label className="flex items-center gap-2 mt-1 text-xs text-gray-600 cursor-pointer">
             <input {...register('current')} type="checkbox" />
             Currently enrolled
@@ -54,6 +142,13 @@ function EducationForm({
           <input {...register('gpa')} className="form-input" placeholder="3.8 / 4.0" />
         </div>
       </div>
+
+      <BulletListInput
+        label="Description"
+        placeholder="e.g. Thesis on distributed systems…"
+        items={description}
+        onChange={setDescription}
+      />
 
       <div className="flex gap-2 justify-end">
         <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>

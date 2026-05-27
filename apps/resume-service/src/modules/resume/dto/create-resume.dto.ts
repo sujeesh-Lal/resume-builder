@@ -14,7 +14,7 @@ export class CreateResumeDto {
   userId?: string;
 
   @IsOptional()
-  @IsEnum(['modern', 'classic', 'minimal', 'creative'])
+  @IsEnum(['modern', 'classic', 'minimal', 'creative', 'elegant'])
   template?: ResumeTemplate;
 
   @IsOptional()

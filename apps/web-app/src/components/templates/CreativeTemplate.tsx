@@ -9,13 +9,16 @@ function descItems(d: string | string[] | undefined): string[] {
 }
 
 export function CreativeTemplate({ resume }: Props) {
-  const { personalInfo: p, summary, experience, education, skills, projects, certifications } = resume;
+  const { personalInfo: p, summary, experience, education, skills, softSkills, languages, projects, certifications } = resume;
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', fontSize: '11pt', color: '#222', lineHeight: '1.5' }}>
       {/* Gradient header */}
       <div style={{ background: 'linear-gradient(135deg, #7c3aed, #db2777)', color: 'white', padding: '36px 32px', borderRadius: '0 0 12px 12px' }}>
         <h1 style={{ margin: 0, fontSize: '26pt', fontWeight: 700, letterSpacing: '-0.5px' }}>{p.fullName || 'Your Name'}</h1>
+        {p.professionalTitle && (
+          <div style={{ fontSize: '12pt', fontWeight: 400, opacity: 0.9, marginTop: '4px' }}>{p.professionalTitle}</div>
+        )}
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '10px', fontSize: '10pt', opacity: 0.85 }}>
           {p.email && <span>✉ {p.email}</span>}
           {p.phone && <span>📱 {p.phone}</span>}
@@ -43,7 +46,7 @@ export function CreativeTemplate({ resume }: Props) {
                     <div style={{ color: '#7c3aed', fontSize: '10pt' }}>{exp.company}{exp.location ? ` · ${exp.location}` : ''}</div>
                     <div style={{ fontSize: '10pt', color: '#888', marginBottom: '4px' }}>{exp.startDate} – {exp.current ? 'Present' : exp.endDate ?? ''}</div>
                     {[...descItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean).length > 0 && (
-                      <ul style={{ margin: '4px 0 0', paddingLeft: '16px' }}>
+                      <ul style={{ margin: '4px 0 0', paddingLeft: '16px', listStyleType: 'disc' }}>
                         {[...descItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean).map((h, i) => (
                           <li key={i} style={{ fontSize: '10pt' }}>{h}</li>
                         ))}
@@ -60,6 +63,16 @@ export function CreativeTemplate({ resume }: Props) {
                   <div key={proj.id} style={{ marginBottom: '12px', borderLeft: '3px solid #fce7f3', paddingLeft: '12px' }}>
                     <strong>{proj.name}</strong>
                     {proj.description && <p style={{ margin: '2px 0 0', fontSize: '10pt' }}>{proj.description}</p>}
+                    {proj.roles && (
+                      <p style={{ margin: '4px 0 0', fontSize: '10pt' }}>
+                        <strong>Roles &amp; Responsibilities:</strong> {proj.roles}
+                      </p>
+                    )}
+                    {proj.highlights?.length > 0 && (
+                      <ul style={{ margin: '4px 0 0', paddingLeft: '16px', listStyleType: 'disc' }}>
+                        {proj.highlights.map((h, i) => <li key={i} style={{ fontSize: '10pt' }}>{h}</li>)}
+                      </ul>
+                    )}
                     {proj.technologies.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
                         {proj.technologies.map((t) => (
@@ -95,6 +108,13 @@ export function CreativeTemplate({ resume }: Props) {
                     <span style={{ fontSize: '10pt', color: '#555' }}>{edu.field}</span><br />
                     <span style={{ fontSize: '10pt', color: '#db2777' }}>{edu.institution}</span><br />
                     <span style={{ fontSize: '9pt', color: '#888' }}>{edu.startDate} – {edu.current ? 'Present' : edu.endDate ?? ''}</span>
+                    {[...descItems(edu.description), ...(edu.highlights ?? [])].filter(Boolean).length > 0 && (
+                      <ul style={{ margin: '4px 0 0', paddingLeft: '16px', listStyleType: 'disc' }}>
+                        {[...descItems(edu.description), ...(edu.highlights ?? [])].filter(Boolean).map((h, i) => (
+                          <li key={i} style={{ fontSize: '10pt' }}>{h}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 ))}
               </Section>
@@ -107,6 +127,29 @@ export function CreativeTemplate({ resume }: Props) {
                     <strong style={{ fontSize: '10pt' }}>{cert.name}</strong><br />
                     <span style={{ fontSize: '10pt', color: '#555' }}>{cert.issuer}</span><br />
                     <span style={{ fontSize: '9pt', color: '#888' }}>{cert.date}</span>
+                  </div>
+                ))}
+              </Section>
+            )}
+
+            {(softSkills ?? []).length > 0 && (
+              <Section title="Soft Skills" color="#db2777">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {(softSkills ?? []).map((sk) => (
+                    <span key={sk} style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', padding: '3px 10px', borderRadius: '6px', fontSize: '10pt' }}>
+                      {sk}
+                    </span>
+                  ))}
+                </div>
+              </Section>
+            )}
+
+            {(languages ?? []).length > 0 && (
+              <Section title="Languages" color="#db2777">
+                {(languages ?? []).map((lang) => (
+                  <div key={lang.id} style={{ marginBottom: '4px', fontSize: '10pt' }}>
+                    <strong>{lang.name}</strong>
+                    {lang.proficiency && <span style={{ color: '#888', fontSize: '9pt' }}> · {lang.proficiency}</span>}
                   </div>
                 ))}
               </Section>

@@ -9,6 +9,7 @@ import type {
   Skill,
   Project,
   Certification,
+  Language,
   ResumeSection,
 } from '@resume-platform/shared-types';
 
@@ -41,6 +42,8 @@ function createEmptyResume(): ResumeData {
     experience: [],
     education: [],
     skills: [],
+    softSkills: [],
+    languages: [],
     projects: [],
     certifications: [],
     customSections: [],
@@ -117,6 +120,15 @@ interface ResumeStore {
   addSkill: (skill: Skill) => void;
   updateSkill: (id: string, skill: Partial<Skill>) => void;
   removeSkill: (id: string) => void;
+
+  // Soft Skills
+  addSoftSkill: (name: string) => void;
+  removeSoftSkill: (name: string) => void;
+
+  // Languages
+  addLanguage: (lang: Language) => void;
+  updateLanguage: (id: string, lang: Partial<Language>) => void;
+  removeLanguage: (id: string) => void;
 
   // Projects
   addProject: (project: Project) => void;
@@ -262,6 +274,51 @@ export const useResumeStore = create<ResumeStore>()(
           resume: {
             ...s.resume,
             skills: s.resume.skills.filter((sk) => sk.id !== id),
+            updatedAt: new Date().toISOString(),
+          },
+        })),
+
+      addSoftSkill: (name) =>
+        set((s) => ({
+          resume: {
+            ...s.resume,
+            softSkills: [...(s.resume.softSkills ?? []), name],
+            updatedAt: new Date().toISOString(),
+          },
+        })),
+
+      removeSoftSkill: (name) =>
+        set((s) => ({
+          resume: {
+            ...s.resume,
+            softSkills: (s.resume.softSkills ?? []).filter((n) => n !== name),
+            updatedAt: new Date().toISOString(),
+          },
+        })),
+
+      addLanguage: (lang) =>
+        set((s) => ({
+          resume: {
+            ...s.resume,
+            languages: [...(s.resume.languages ?? []), lang],
+            updatedAt: new Date().toISOString(),
+          },
+        })),
+
+      updateLanguage: (id, lang) =>
+        set((s) => ({
+          resume: {
+            ...s.resume,
+            languages: (s.resume.languages ?? []).map((l) => (l.id === id ? { ...l, ...lang } : l)),
+            updatedAt: new Date().toISOString(),
+          },
+        })),
+
+      removeLanguage: (id) =>
+        set((s) => ({
+          resume: {
+            ...s.resume,
+            languages: (s.resume.languages ?? []).filter((l) => l.id !== id),
             updatedAt: new Date().toISOString(),
           },
         })),

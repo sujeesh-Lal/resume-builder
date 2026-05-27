@@ -72,7 +72,7 @@ function SkillsGrid({ skills }: { skills: Skill[] }) {
 
 // ─── Main template ────────────────────────────────────────────────────────────
 export function ElegantTemplate({ resume }: Props) {
-  const { personalInfo: p, summary, experience, education, skills, projects, certifications, customSections } = resume;
+  const { personalInfo: p, summary, experience, education, skills, softSkills, languages, projects, certifications, customSections } = resume;
 
   // Split skills by category if provided, otherwise treat all as "Professional Skills"
   const professionalSkills = skills.filter(sk => !sk.category || sk.category.toLowerCase() !== 'technical');
@@ -98,7 +98,7 @@ export function ElegantTemplate({ resume }: Props) {
 
       {/* ── HEADER ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '18px' }}>
-        {/* Circular photo placeholder */}
+        {/* Circular photo / initials */}
         <div style={{
           width: '90px',
           height: '90px',
@@ -111,15 +111,19 @@ export function ElegantTemplate({ resume }: Props) {
           overflow: 'hidden',
           border: '1px solid #d0d0d0',
         }}>
-          <span style={{
-            fontFamily: SANS,
-            fontSize: '22pt',
-            fontWeight: 300,
-            color: '#888',
-            letterSpacing: '0.05em',
-          }}>
-            {initials}
-          </span>
+          {p.photo ? (
+            <img src={p.photo} alt={p.fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <span style={{
+              fontFamily: SANS,
+              fontSize: '22pt',
+              fontWeight: 300,
+              color: '#888',
+              letterSpacing: '0.05em',
+            }}>
+              {initials}
+            </span>
+          )}
         </div>
 
         {/* Name + title */}
@@ -135,16 +139,18 @@ export function ElegantTemplate({ resume }: Props) {
           }}>
             {p.fullName || 'YOUR NAME'}
           </h1>
-          <p style={{
-            fontFamily: SANS,
-            fontSize: '9pt',
-            letterSpacing: '0.25em',
-            textTransform: 'uppercase',
-            color: COLOR_MUTED,
-            margin: '6px 0 0 0',
-          }}>
-            PROFESSIONAL TITLE
-          </p>
+          {(p.professionalTitle) && (
+            <p style={{
+              fontFamily: SANS,
+              fontSize: '9pt',
+              letterSpacing: '0.25em',
+              textTransform: 'uppercase',
+              color: COLOR_MUTED,
+              margin: '6px 0 0 0',
+            }}>
+              {p.professionalTitle}
+            </p>
+          )}
         </div>
       </div>
 
@@ -205,7 +211,7 @@ export function ElegantTemplate({ resume }: Props) {
                 <div style={{ fontFamily: SANS, fontSize: '8.5pt', color: COLOR_MUTED }}>{exp.location}</div>
               )}
               {[...descItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean).length > 0 && (
-                <ul style={{ margin: '4px 0 0', paddingLeft: '18px' }}>
+                <ul style={{ margin: '4px 0 0', paddingLeft: '18px', listStyleType: 'disc' }}>
                   {[...descItems(exp.description), ...(exp.highlights ?? [])].filter(Boolean).map((h, i) => (
                     <li key={i} style={{ fontSize: '9.5pt', color: COLOR_TEXT, marginBottom: '2px' }}>{h}</li>
                   ))}
@@ -241,9 +247,9 @@ export function ElegantTemplate({ resume }: Props) {
               {edu.gpa && (
                 <div style={{ fontFamily: SANS, fontSize: '9pt', color: COLOR_MUTED }}>GPA: {edu.gpa}</div>
               )}
-              {edu.highlights.length > 0 && (
-                <ul style={{ margin: '4px 0 0', paddingLeft: '18px' }}>
-                  {edu.highlights.map((h, i) => (
+              {[...descItems(edu.description), ...(edu.highlights ?? [])].filter(Boolean).length > 0 && (
+                <ul style={{ margin: '4px 0 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                  {[...descItems(edu.description), ...(edu.highlights ?? [])].filter(Boolean).map((h, i) => (
                     <li key={i} style={{ fontSize: '9.5pt', color: COLOR_TEXT }}>{h}</li>
                   ))}
                 </ul>
@@ -324,8 +330,13 @@ export function ElegantTemplate({ resume }: Props) {
               {proj.description && (
                 <p style={{ margin: '4px 0 0', fontSize: '9.5pt', color: COLOR_TEXT }}>{proj.description}</p>
               )}
+              {proj.roles && (
+                <p style={{ margin: '4px 0 0', fontSize: '9.5pt', color: COLOR_TEXT }}>
+                  <strong style={{ fontFamily: SANS }}>Roles &amp; Responsibilities:</strong> {proj.roles}
+                </p>
+              )}
               {proj.highlights.length > 0 && (
-                <ul style={{ margin: '4px 0 0', paddingLeft: '18px' }}>
+                <ul style={{ margin: '4px 0 0', paddingLeft: '18px', listStyleType: 'disc' }}>
                   {proj.highlights.map((h, i) => (
                     <li key={i} style={{ fontSize: '9.5pt', color: COLOR_TEXT }}>{h}</li>
                   ))}
@@ -333,6 +344,44 @@ export function ElegantTemplate({ resume }: Props) {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── SOFT SKILLS ── */}
+      {(softSkills ?? []).length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <SectionHeading title="Soft Skills" />
+          <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {(softSkills ?? []).map((sk) => (
+              <span key={sk} style={{ fontFamily: SANS, fontSize: '9.5pt', color: COLOR_TEXT }}>
+                {sk}
+              </span>
+            )).reduce<React.ReactNode[]>((acc, el, i, arr) =>
+              i < arr.length - 1 ? [...acc, el, <span key={`sep-${i}`} style={{ color: COLOR_DIVIDER }}>·</span>] : [...acc, el],
+              []
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── LANGUAGES ── */}
+      {(languages ?? []).length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <SectionHeading title="Languages" />
+          <div style={{ marginTop: '8px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                <tr>
+                  {(languages ?? []).map((lang) => (
+                    <td key={lang.id} style={{ fontFamily: SANS, fontSize: '9.5pt', color: COLOR_TEXT, paddingBottom: '4px', width: `${100 / Math.min((languages ?? []).length, 4)}%` }}>
+                      <strong>{lang.name}</strong>
+                      {lang.proficiency && <span style={{ color: COLOR_MUTED, fontSize: '9pt' }}> · {lang.proficiency}</span>}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

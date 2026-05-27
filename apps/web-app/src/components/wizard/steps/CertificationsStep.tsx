@@ -31,12 +31,12 @@ function CertificationForm({
           <input {...register('issuer', { required: true })} className="form-input" placeholder="Amazon Web Services" />
         </div>
         <div>
-          <label className="form-label">Issue Date *</label>
-          <input {...register('date', { required: true })} type="month" className="form-input" />
+          <label className="form-label">Issue Year *</label>
+          <input {...register('date', { required: true })} type="number" min="1900" max="2100" className="form-input" placeholder="2023" />
         </div>
         <div>
-          <label className="form-label">Expiry Date</label>
-          <input {...register('expiryDate')} type="month" className="form-input" />
+          <label className="form-label">Expiry Year</label>
+          <input {...register('expiryDate')} type="number" min="1900" max="2100" className="form-input" placeholder="2026" />
         </div>
         <div>
           <label className="form-label">Credential ID</label>

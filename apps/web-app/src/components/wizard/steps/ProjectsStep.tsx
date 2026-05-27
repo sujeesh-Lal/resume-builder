@@ -18,11 +18,16 @@ function ProjectForm({
   });
   const [tech, setTech] = useState('');
   const [technologies, setTechnologies] = useState<string[]>(initial?.technologies ?? []);
-  const [highlight, setHighlight] = useState('');
-  const [highlights, setHighlights] = useState<string[]>(initial?.highlights ?? []);
+
+  const addTech = () => {
+    if (tech.trim()) {
+      setTechnologies((t) => [...t, tech.trim()]);
+      setTech('');
+    }
+  };
 
   const onSubmit = (data: Omit<Project, 'technologies' | 'highlights'>) => {
-    onSave({ ...data, id: initial?.id ?? crypto.randomUUID(), technologies, highlights });
+    onSave({ ...data, id: initial?.id ?? crypto.randomUUID(), technologies, highlights: [] });
   };
 
   return (
@@ -40,11 +45,38 @@ function ProjectForm({
           <label className="form-label">GitHub URL</label>
           <input {...register('githubUrl')} className="form-input" placeholder="https://github.com/..." />
         </div>
+        <div>
+          <label className="form-label">Start Date</label>
+          <input
+            {...register('startDate')}
+            type="number"
+            min="1950"
+            max={new Date().getFullYear()}
+            className="form-input"
+            placeholder={String(new Date().getFullYear())}
+          />
+        </div>
+        <div>
+          <label className="form-label">End Date</label>
+          <input
+            {...register('endDate')}
+            type="number"
+            min="1950"
+            max={new Date().getFullYear() + 5}
+            className="form-input"
+            placeholder={String(new Date().getFullYear())}
+          />
+        </div>
       </div>
 
       <div>
         <label className="form-label">Description</label>
-        <textarea {...register('description')} rows={2} className="form-input resize-none" placeholder="What does this project do?" />
+        <textarea
+          {...register('description')}
+          rows={2}
+          className="form-input resize-none"
+          placeholder="What does this project do?"
+        />
       </div>
 
       <div>
@@ -53,11 +85,11 @@ function ProjectForm({
           <input
             value={tech}
             onChange={(e) => setTech(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), tech.trim() && (setTechnologies((t) => [...t, tech.trim()]), setTech('')))}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTech())}
             className="form-input"
             placeholder="e.g. React, NestJS"
           />
-          <button type="button" onClick={() => tech.trim() && (setTechnologies((t) => [...t, tech.trim()]), setTech(''))} className="btn-secondary shrink-0">Add</button>
+          <button type="button" onClick={addTech} className="btn-secondary shrink-0">Add</button>
         </div>
         <div className="flex flex-wrap gap-1 mt-2">
           {technologies.map((t, i) => (
@@ -67,6 +99,16 @@ function ProjectForm({
             </span>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className="form-label">Roles & Responsibilities</label>
+        <textarea
+          {...register('roles')}
+          rows={3}
+          className="form-input resize-none"
+          placeholder="Describe your role and responsibilities in this project…"
+        />
       </div>
 
       <div className="flex gap-2 justify-end">
@@ -95,9 +137,23 @@ export function ProjectsStep() {
             />
           ) : (
             <div key={proj.id} className="flex items-start justify-between border border-gray-200 rounded-lg p-4">
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900">{proj.name}</p>
-                <p className="text-sm text-gray-600 mt-0.5">{proj.description}</p>
+                {proj.description && (
+                  <p className="text-sm text-gray-600 mt-0.5">{proj.description}</p>
+                )}
+                {proj.highlights.length > 0 && (
+                  <ul className="mt-1 space-y-0.5">
+                    {proj.highlights.slice(0, 2).map((h, i) => (
+                      <li key={i} className="text-xs text-gray-500 flex gap-1">
+                        <span>•</span><span>{h}</span>
+                      </li>
+                    ))}
+                    {proj.highlights.length > 2 && (
+                      <li className="text-xs text-gray-400">+{proj.highlights.length - 2} more…</li>
+                    )}
+                  </ul>
+                )}
                 {proj.technologies.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {proj.technologies.map((t) => (
@@ -106,7 +162,7 @@ export function ProjectsStep() {
                   </div>
                 )}
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2 shrink-0 ml-3">
                 <button onClick={() => setEditId(proj.id)} className="text-sm text-primary-600 hover:underline">Edit</button>
                 <button onClick={() => removeProject(proj.id)} className="text-sm text-red-500 hover:underline">Remove</button>
               </div>

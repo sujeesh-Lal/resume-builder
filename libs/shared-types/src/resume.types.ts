@@ -6,6 +6,8 @@ export interface PersonalInfo {
   website?: string;
   linkedin?: string;
   github?: string;
+  professionalTitle?: string;
+  photo?: string; // base64 data URL
 }
 
 export interface WorkExperience {
@@ -29,6 +31,7 @@ export interface Education {
   endDate?: string;
   current: boolean;
   gpa?: string;
+  description: string[];
   highlights: string[];
 }
 
@@ -43,6 +46,7 @@ export interface Project {
   id: string;
   name: string;
   description: string;
+  roles?: string;
   url?: string;
   githubUrl?: string;
   technologies: string[];
@@ -75,6 +79,12 @@ export interface CustomSectionItem {
   description?: string;
 }
 
+export interface Language {
+  id: string;
+  name: string;
+  proficiency?: 'Elementary' | 'Conversational' | 'Professional' | 'Fluent' | 'Native';
+}
+
 export type ResumeTemplate = 'modern' | 'classic' | 'minimal' | 'creative' | 'elegant';
 
 export interface ResumeData {
@@ -88,6 +98,8 @@ export interface ResumeData {
   experience: WorkExperience[];
   education: Education[];
   skills: Skill[];
+  softSkills: string[];
+  languages: Language[];
   projects: Project[];
   certifications: Certification[];
   customSections: CustomSection[];
